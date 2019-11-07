@@ -3,6 +3,7 @@
 // Enable debug prints to serial monitor
 #define MY_DEBUG 
 
+#define MY_NODE_ID 1
 
 // Enable and select radio type attached
 //#define MY_RADIO_NRF24
@@ -107,7 +108,6 @@ void presentation()
 {   
   // Send the sketch version information to the gateway and Controller
   sendSketchInfo("Relay", "1.0");
-
   for (int sensor=1, pin=RELAY_1; sensor<=NUMBER_OF_RELAYS;sensor++, pin++) {
     // Register all sensors to gw (they will be created as child devices)
     present(sensor, S_LIGHT);
@@ -146,6 +146,9 @@ void loop() {
 
 
 void receive(const MyMessage &message) {
+    if (message.isAck()) {
+     Serial.println("This is an ack from gateway");
+  }
   // We only expect one type of message from controller. But we better check anyway.
   if (message.type==V_LIGHT) {
      // Change relay state
@@ -157,5 +160,8 @@ void receive(const MyMessage &message) {
      Serial.print(message.sensor);
      Serial.print(", New status: ");
      Serial.println(message.getBool());
-   } 
+   } else {
+    Serial.print("Unknown message: ");
+    Serial.println(message.type);
+   }
 }
