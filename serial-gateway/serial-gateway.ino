@@ -1,17 +1,5 @@
-
-
 // Enable debug prints to serial monitor
-#define MY_DEBUG 
-
-#define MY_NODE_ID 1
-
-// Enable and select radio type attached
-//#define MY_RADIO_NRF24
-//#define MY_RADIO_RFM69
-
-// Set LOW transmit power level as default, if you have an amplified NRF-module and
-// power your radio separately with a good regulator you can turn up PA level. 
-//#define MY_RF24_PA_LEVEL RF24_PA_LOW
+#define MY_DEBUG
 
 // Enable serial gateway
 #define MY_GATEWAY_SERIAL
@@ -20,14 +8,6 @@
 #if F_CPU == 8000000L
 #define MY_BAUD_RATE 38400
 #endif
-
-// Flash leds on rx/tx/err
-// #define MY_LEDS_BLINKING_FEATURE
-// Set blinking period
-// #define MY_DEFAULT_LED_BLINK_PERIOD 300
-
-// Inverses the behavior of leds
-// #define MY_WITH_LEDS_BLINKING_INVERSE
 
 // Enable inclusion mode
 #define MY_INCLUSION_MODE_FEATURE
@@ -38,130 +18,110 @@
 //#define MY_INCLUSION_BUTTON_EXTERNAL_PULLUP
 
 // Set inclusion mode duration (in seconds)
-#define MY_INCLUSION_MODE_DURATION 60 
+#define MY_INCLUSION_MODE_DURATION 60
 // Digital pin used for inclusion mode button
-#define MY_INCLUSION_MODE_BUTTON_PIN  3 
-
-// Uncomment to override default HW configurations
-//#define MY_DEFAULT_ERR_LED_PIN 4  // Error led pin
-//#define MY_DEFAULT_RX_LED_PIN  6  // Receive led pin
-//#define MY_DEFAULT_TX_LED_PIN  5  // the PCB, on board LED
+#define MY_INCLUSION_MODE_BUTTON_PIN  3
 
 #include <SPI.h>
-#include <MySensors.h>  
+#include <MySensors.h>
 #include <Bounce2.h>
 
 // Enable repeater functionality for this node
 #define MY_REPEATER_FEATURE
 
-
-#define RELAY_1  4  // Arduino Digital I/O pin number for first relay (second on pin+1 etc)
-#define RELAY_2  5
-
-#define NUMBER_OF_RELAYS 2 // Total number of attached relays
 #define RELAY_ON 1  // GPIO value to write to turn on attached relay
 #define RELAY_OFF 0 // GPIO value to write to turn off attached relay
 
 #define BUTTON_PIN A1
 #define BUTTON_PIN_2 A2
 
+#define NUM_BUTTONS 6 // SET NUMBER OF BUTTONS
+Bounce DEBOUNCERS[NUM_BUTTONS];
+#define NUM_RELAYS 9 // SET NUMBER OF RELYS
+const int RELAYS[NUM_RELAYS] = {4, 5, 6, 7, 8, 9, 10, 11, 12};
+const int BUTTONS[NUM_BUTTONS] = {A1, A2, A3, A4, A5, 2};
 // rely -> button
-const int mapping[10][2] = {
-  {1,2},
-  {1,2},
-  {1,2},
-  {1,2},
-  {1,2},
-  {1,2},
-  {1,2},
-  {1,2},
-  {5,6},
-  {1,2}
+# define NUM_OF_MAPPINGS 9
+const int mapping[NUM_OF_MAPPINGS][2] = { // MAP BUTTONS TO RELAYS
+  {0, 0},
+  {0, 1},
+  {1, 2},
+  {1, 3},
+  {2, 4},
+  {2, 5},
+  {3, 6},
+  {4, 7},
+  {5, 8}
 };
 
-void before() { 
-  for (int sensor=1, pin=RELAY_1; sensor<=NUMBER_OF_RELAYS;sensor++, pin++) {
-    // Then set relay pins in output mode
-    pinMode(pin, OUTPUT);   
-    // Set relay to last known state (using eeprom storage) 
-    digitalWrite(pin, loadState(sensor)?RELAY_ON:RELAY_OFF);
-  }
-}
-Bounce debouncer = Bounce();
-Bounce debouncer2 = Bounce();
-
-void setup() { 
-  // Setup locally attached sensors
-  delay(10000);
-   // Setup the button.
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  pinMode(BUTTON_PIN_2, INPUT_PULLUP);
-  // After setting up the button, setup debouncer.
-  debouncer.attach(BUTTON_PIN);
-  debouncer.interval(5);
-
-  debouncer2.attach(BUTTON_PIN_2);
-  debouncer2.interval(5);
-  //presentation();
-}
-void presentation()  
-{   
-  // Send the sketch version information to the gateway and Controller
-  sendSketchInfo("Relay", "1.0");
-  for (int sensor=1, pin=RELAY_1; sensor<=NUMBER_OF_RELAYS;sensor++, pin++) {
-    // Register all sensors to gw (they will be created as child devices)
-    present(sensor, S_LIGHT);
-  }
-}
-
-MyMessage msg(1, V_LIGHT);
-
-MyMessage msg2(2, V_LIGHT); // SPrawdzic czy na pewno 2
-
-void loop() { 
-  // Send locally attached sensor data here 
-  if (debouncer.update()) {
-    // Get the update value.
-    int value = debouncer.read();
-    // Send in the new value.
-    if(value == LOW){
-         saveState(1, !loadState(1));
-         digitalWrite(RELAY_1, loadState(1)?RELAY_ON:RELAY_OFF);
-         send(msg.set(loadState(1)));
-    }
+void before() {
+  for (int relyNum = 0; relyNum < NUM_RELAYS; relyNum++) {
+    pinMode(RELAYS[relyNum], OUTPUT);
   }
 
-  if (debouncer2.update()) {
-    // Get the update value.
-    int value2 = debouncer2.read();
-    // Send in the new value.
-    if(value2 == LOW){
-         saveState(2, !loadState(2));
-         digitalWrite(RELAY_2, loadState(2)?RELAY_ON:RELAY_OFF);
-         send(msg2.set(loadState(2)));
-    }
+  for (int buttonIndex = 0; buttonIndex < NUM_BUTTONS; buttonIndex++) {
+    switchAssignedRelays(buttonIndex, loadState(buttonIndex));
   }
   
 }
 
+void setup() {
+  delay(1000);
+
+  for (int buttonIndex = 0; buttonIndex < NUM_BUTTONS; buttonIndex++) {
+    int curretnButtonPin = BUTTONS[buttonIndex];
+    pinMode(curretnButtonPin, INPUT_PULLUP);
+    Bounce *debouncer = new Bounce();
+    debouncer->attach(curretnButtonPin);
+    debouncer->interval(5);
+    DEBOUNCERS[buttonIndex] = *debouncer;
+  }
+}
+
+void presentation()
+{
+  // Send the sketch version information to the gateway and Controller
+  sendSketchInfo("Relay", "2.0");
+  for (int sensor = 0; sensor < NUM_BUTTONS; sensor++) {
+    present(sensor, S_LIGHT);
+  }
+}
+
+void loop() {
+  for (int buttonIndex = 0; buttonIndex < NUM_BUTTONS; buttonIndex++) {
+    Bounce *debouncer = &DEBOUNCERS[buttonIndex];
+    if (debouncer->update()) {
+      int value = debouncer->read();
+      if (value == LOW) {
+        switchAssignedRelays(buttonIndex, !loadState(buttonIndex));
+        send(MyMessage(buttonIndex, V_LIGHT).set(loadState(buttonIndex)));
+      }
+    }
+  }
+}
+
+void switchAssignedRelays(const int button, const bool enabled) {
+  saveState(button, enabled);
+  for (int i = 0; i < NUM_OF_MAPPINGS; i++) {
+    if (mapping[i][0] == button) {
+      int relyNumber = mapping[i][1];
+      saveRelyState(relyNumber, enabled);
+    }
+  }
+}
+
+void saveRelyState(const int relyNum, const bool enabled) {
+  digitalWrite(RELAYS[relyNum], enabled ? RELAY_ON : RELAY_OFF);
+}
 
 void receive(const MyMessage &message) {
-    if (message.isAck()) {
-     Serial.println("This is an ack from gateway");
+  if (message.isAck()) {
+    Serial.println("This is an ack from gateway");
   }
-  // We only expect one type of message from controller. But we better check anyway.
-  if (message.type==V_LIGHT) {
-     // Change relay state
-     digitalWrite(message.sensor-1+RELAY_1, message.getBool()?RELAY_ON:RELAY_OFF);
-     // Store state in eeprom
-     saveState(message.sensor, message.getBool());
-     // Write some debug info
-     Serial.print("Incoming change for sensor:");
-     Serial.print(message.sensor);
-     Serial.print(", New status: ");
-     Serial.println(message.getBool());
-   } else {
+  if (message.type == V_LIGHT) {
+    switchAssignedRelays(message.sensor, message.getBool());
+  } else {
     Serial.print("Unknown message: ");
     Serial.println(message.type);
-   }
+  }
 }
