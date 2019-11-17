@@ -41,17 +41,14 @@ Bounce DEBOUNCERS[NUM_BUTTONS];
 const int RELAYS[NUM_RELAYS] = {4, 5, 6, 7, 8, 9, 10, 11, 12};
 const int BUTTONS[NUM_BUTTONS] = {A1, A2, A3, A4, A5, 2};
 // rely -> button
-# define NUM_OF_MAPPINGS 9
+# define NUM_OF_MAPPINGS 6
 const int mapping[NUM_OF_MAPPINGS][2] = { // MAP BUTTONS TO RELAYS
-  {0, 0},
   {0, 1},
-  {1, 2},
-  {1, 3},
-  {2, 4},
-  {2, 5},
-  {3, 6},
-  {4, 7},
-  {5, 8}
+  {1, 1},
+  {2, 1},
+  {3, 2},
+  {4, 2},
+  {5, 3}
 };
 
 void before() {
@@ -59,10 +56,10 @@ void before() {
     pinMode(RELAYS[relyNum], OUTPUT);
   }
 
-  for (int buttonIndex = 0; buttonIndex < NUM_BUTTONS; buttonIndex++) {
-    switchAssignedRelays(buttonIndex, loadState(buttonIndex));
+  for (int relyIndex = 0; relyIndex < NUM_RELAYS; relyIndex++) {
+    saveRelyState(relyIndex, loadState(relyIndex));
   }
-  
+
 }
 
 void setup() {
@@ -81,8 +78,8 @@ void setup() {
 void presentation()
 {
   // Send the sketch version information to the gateway and Controller
-  sendSketchInfo("Relay", "2.0");
-  for (int sensor = 0; sensor < NUM_BUTTONS; sensor++) {
+  sendSketchInfo("Relay", "2.1");
+  for (int sensor = 0; sensor < NUM_RELAYS; sensor++) {
     present(sensor, S_LIGHT);
   }
 }
@@ -93,25 +90,29 @@ void loop() {
     if (debouncer->update()) {
       int value = debouncer->read();
       if (value == LOW) {
-        switchAssignedRelays(buttonIndex, !loadState(buttonIndex));
-        send(MyMessage(buttonIndex, V_LIGHT).set(loadState(buttonIndex)));
+        int assignedRelay = findAssignedRelay(buttonIndex);
+        if (assignedRelay >= 0) {
+          saveRelyState(assignedRelay, !loadState(assignedRelay));
+          send(MyMessage(assignedRelay, V_LIGHT).set(loadState(assignedRelay)));
+        }
       }
     }
   }
 }
 
-void switchAssignedRelays(const int button, const bool enabled) {
-  saveState(button, enabled);
+int findAssignedRelay(const int button) {
   for (int i = 0; i < NUM_OF_MAPPINGS; i++) {
     if (mapping[i][0] == button) {
       int relyNumber = mapping[i][1];
-      saveRelyState(relyNumber, enabled);
+      return relyNumber;
     }
   }
+  return -1;
 }
 
 void saveRelyState(const int relyNum, const bool enabled) {
   digitalWrite(RELAYS[relyNum], enabled ? RELAY_ON : RELAY_OFF);
+  saveState(relyNum, enabled);
 }
 
 void receive(const MyMessage &message) {
@@ -119,7 +120,7 @@ void receive(const MyMessage &message) {
     Serial.println("This is an ack from gateway");
   }
   if (message.type == V_LIGHT) {
-    switchAssignedRelays(message.sensor, message.getBool());
+    saveRelyState(message.sensor, message.getBool());
   } else {
     Serial.print("Unknown message: ");
     Serial.println(message.type);
