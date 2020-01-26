@@ -35,20 +35,38 @@
 #define BUTTON_PIN A1
 #define BUTTON_PIN_2 A2
 
-#define NUM_BUTTONS 6 // SET NUMBER OF BUTTONS
+#define NUM_BUTTONS 24 // SET NUMBER OF BUTTONS
 Bounce DEBOUNCERS[NUM_BUTTONS];
-#define NUM_RELAYS 9 // SET NUMBER OF RELYS
-const int RELAYS[NUM_RELAYS] = {4, 5, 6, 7, 8, 9, 10, 11, 12};
-const int BUTTONS[NUM_BUTTONS] = {A1, A2, A3, A4, A5, 2};
+#define NUM_RELAYS 24 // SET NUMBER OF RELYS
+const int RELAYS[NUM_RELAYS] = {23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, A15, A14, A13, A12, A11, A10, A9, A8};
+const int BUTTONS[NUM_BUTTONS] = {22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, A7, A6, A5, A4, A3, A2, A1, A0};
 // rely -> button
-# define NUM_OF_MAPPINGS 6
+# define NUM_OF_MAPPINGS 24
 const int mapping[NUM_OF_MAPPINGS][2] = { // MAP BUTTONS TO RELAYS
-  {0, 1},
+  {0, 0},
   {1, 1},
-  {2, 1},
-  {3, 2},
-  {4, 2},
-  {5, 3}
+  {2, 2},
+  {3, 3},
+  {4, 4},
+  {5, 5},
+  {6, 6},
+  {7, 7},
+  {8, 8},
+  {9, 9},
+  {10, 10},
+  {11, 11},
+  {12, 12},
+  {13, 13},
+  {14, 14},
+  {15, 15},
+  {16, 16},
+  {17, 17},
+  {18, 18},
+  {19, 19},
+  {20, 20},
+  {21, 21},
+  {22, 22},
+  {23, 23}
 };
 
 void before() {
@@ -72,6 +90,16 @@ void setup() {
     debouncer->attach(curretnButtonPin);
     debouncer->interval(5);
     DEBOUNCERS[buttonIndex] = *debouncer;
+  }
+  //printMapping();
+}
+
+void printMapping() {
+  for (int i = 0; i < NUM_OF_MAPPINGS; i++) {
+    Serial.print("Przycisk: ");
+    Serial.print(BUTTONS[mapping[i][0]]);
+    Serial.print(" Przekaźnik: ");
+    Serial.println(RELAYS[mapping[i][1]]);
   }
 }
 
