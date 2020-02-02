@@ -8,6 +8,9 @@ const int mqttPort = 1883;
 const char* mqttUser = "mqtt";
 const char* mqttPassword = "mqtt";
 
+const char* TOPIC_1 = "/smart-item-1/socket-1/cmd";
+const char* TOPIC_2 = "/smart-item-1/socket-2/cmd";
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -28,7 +31,8 @@ void connectToMqtt() {
     Serial.println("Connecting to MQTT...");
     if (client.connect("SmartItem1", mqttUser, mqttPassword )) {
       Serial.println("connected");
-      client.subscribe("/switch/light1/cmd");
+      client.subscribe(TOPIC_1);
+      client.subscribe(TOPIC_2);
     } else {
       Serial.print("failed with state ");
       Serial.println(client.state());
@@ -39,8 +43,8 @@ void connectToMqtt() {
 
 void setup() {
   pinMode(D0, OUTPUT);
-  digitalWrite(D0, HIGH);
-  
+  pinMode(D1, OUTPUT);
+
   Serial.begin(115200);
   WiFi.begin(ssid, password);
   connectToWifi();
@@ -74,7 +78,22 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
   }
 
+  if (!strncmp((char *)topic, TOPIC_1, 1000)) {
+    handleRelay(D0, payload, length);
+  }
+  if (!strncmp((char *)topic, TOPIC_2, 1000)) {
+    handleRelay(D1, payload, length);
+  }
+
   Serial.println();
   Serial.println("-----------------------");
 
+}
+
+void handleRelay(int pin, byte* payload, unsigned int length ) {
+  if (!strncmp((char *)payload, "on", length)) {
+    digitalWrite(pin, HIGH);
+  } else if (!strncmp((char *)payload, "off", length)) {
+    digitalWrite(pin, LOW);
+  }
 }
