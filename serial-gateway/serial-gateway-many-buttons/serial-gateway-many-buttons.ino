@@ -29,8 +29,8 @@
 // Enable repeater functionality for this node
 #define MY_REPEATER_FEATURE
 
-#define RELAY_ON 1  // GPIO value to write to turn on attached relay
-#define RELAY_OFF 0 // GPIO value to write to turn off attached relay
+#define RELAY_ON 0  // GPIO value to write to turn on attached relay
+#define RELAY_OFF 1 // GPIO value to write to turn off attached relay
 
 #define BUTTON_PIN A1
 #define BUTTON_PIN_2 A2
@@ -71,6 +71,7 @@ const int mapping[NUM_OF_MAPPINGS][2] = { // MAP BUTTONS TO RELAYS
 
 void before() {
   for (int relyNum = 0; relyNum < NUM_RELAYS; relyNum++) {
+    digitalWrite(RELAYS[relyNum], RELAY_OFF);
     pinMode(RELAYS[relyNum], OUTPUT);
   }
 
