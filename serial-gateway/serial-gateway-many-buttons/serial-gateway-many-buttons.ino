@@ -89,7 +89,7 @@ void setup() {
     pinMode(curretnButtonPin, INPUT_PULLUP);
     Bounce *debouncer = new Bounce();
     debouncer->attach(curretnButtonPin);
-    debouncer->interval(5);
+    debouncer->interval(100);
     DEBOUNCERS[buttonIndex] = *debouncer;
   }
   //printMapping();
