@@ -22,44 +22,24 @@ const char* TOPIC_1 = "/smart-item-1/socket-1/cmd";
 const char* TOPIC_2 = "/smart-item-1/socket-2/cmd";
 
 EthernetClient ethernetClient;
-bool alreadyConnected = false;
 PubSubClient client(ethernetClient);
+unsigned long lastRetry = millis();
+
 
 boolean isInternetNotConnected() {
   return !ethernetClient.connected();
 }
 
-boolean connectToInternet() {
-  Serial.println("Initialize Ethernet");
-  Ethernet.begin(mac);
-
-  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-    Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-    return false;
-  }
-
-  if (Ethernet.linkStatus() == LinkOFF) {
-    Serial.println("Ethernet cable is not connected.");
-    return false;
-  }
-
-  // give the Ethernet shield a second to initialize:
-  delay(1000);
-  return true;
-}
-
 void connectToMqtt() {
-  while (!client.connected()) {
-    Serial.println("Connecting to MQTT...");
-    if (client.connect("SmartItem2", mqttUser, mqttPassword )) {
-      Serial.println("connected");
-      client.subscribe(TOPIC_1);
-      client.subscribe(TOPIC_2);
-    } else {
-      Serial.print("failed with state ");
-      Serial.println(client.state());
-      delay(2000);
-    }
+  Serial.println("Connecting to MQTT...");
+  if (client.connect("SmartItem2", mqttUser, mqttPassword )) {
+    Serial.println("connected");
+    client.subscribe(TOPIC_1);
+    client.subscribe(TOPIC_2);
+  } else {
+    Serial.print("failed with state ");
+    Serial.println(client.state());
+    delay(1000);
   }
 }
 
@@ -68,23 +48,28 @@ void setup() {
   pinMode(D1, OUTPUT);
 
   Serial.begin(115200);
+  Ethernet.begin(mac, ip);
+  delay(1000);
 
+  client.setServer(mqttServer, mqttPort);
+  client.setCallback(callback);
 
-  if (connectToInternet()) {
-    client.setServer(mqttServer, mqttPort);
-    client.setCallback(callback);
+  if (!isInternetNotConnected()) {
     connectToMqtt();
   }
 }
 
+boolean canReconnect() {
+  return millis() - lastRetry > 60000;
+}
+
 void loop() {
-  if (isInternetNotConnected()) {
-    Serial.println("Connection to the internet lost, reconnecting...");
-    connectToInternet();
-  }
-  if (!client.connected() && !isInternetNotConnected()) {
-    Serial.println("Connection to mqtt lost, reconnecting...");
-    connectToMqtt();
+  if (!client.connected()) {
+    if (canReconnect()) {
+      Serial.println("Connection to mqtt lost, reconnecting in 60 seconds...");
+      connectToMqtt();
+      lastRetry = millis();
+    }
   }
   client.loop();
 }
