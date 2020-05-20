@@ -3,9 +3,6 @@
 #include <PubSubClient.h>
 #include <Bounce2.h>
 
-#define D0 A14
-#define D1 A15
-
 /**
 
    BEGIN DEVICE SPECIFIC CONFIG
@@ -17,8 +14,8 @@
 byte mac[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
-const char* DEVICE_NAME = "mqtt-gateway-1";
-const char* RELAYS_PATTERN = "heating";
+String DEVICE_NAME = "mqtt-gateway-1";
+String RELAYS_PATTERN = "heating";
 
 
 IPAddress ip(192, 168, 0, 175);
@@ -85,10 +82,11 @@ boolean isInternetNotConnected() {
 
 void connectToMqtt() {
   Serial.println("Connecting to MQTT...");
-  if (client.connect("SmartItem2", mqttUser, mqttPassword )) {
-    Serial.println("connected");
-    client.subscribe(TOPIC_1);
-    client.subscribe(TOPIC_2);
+  if (client.connect((char*)DEVICE_NAME.c_str(), mqttUser, mqttPassword )) {
+    for (int relyNum = 0; relyNum < NUM_RELAYS; relyNum++) {
+      client.subscribe(toCharArray(getCmdTopic(relyNum)));
+    }
+    Serial.println("Connected" );
   } else {
     Serial.print("failed with state ");
     Serial.println(client.state());
@@ -96,10 +94,11 @@ void connectToMqtt() {
   }
 }
 
-void setup() {
-  pinMode(D0, OUTPUT);
-  pinMode(D1, OUTPUT);
+const char* toCharArray(String string) {
+  return (char*)string.c_str();
+}
 
+void setup() {
   Serial.begin(115200);
   Serial.println("SETUP");
   initRelays();
@@ -154,9 +153,7 @@ void buttonsLoop() {
     Bounce *debouncer = &DEBOUNCERS[buttonIndex];
     if (debouncer->update()) {
       int value = debouncer->read();
-      Serial.println(value);
       if (value == LOW) {
-        Serial.print("BUTTON CLICKED");
         int assignedRelay = findAssignedRelay(buttonIndex);
         if (assignedRelay >= 0) {
           saveRelyState(assignedRelay, !state[assignedRelay]);
@@ -183,16 +180,23 @@ void saveRelyState(const int relyNum, const bool enabled) {
 }
 
 void send(int assignedRelay, int currentState) {
-  Serial.print("Sending message for relay ");
-  Serial.println(assignedRelay);
-  Serial.print("With value: ");
-  Serial.println(currentState);
-
-  client.publish("/smart-item-1/socket-2/state", toPayload(currentState), true);
+  client.publish(toCharArray(getStateTopic(assignedRelay)), toPayload(currentState), true);
 }
 
 const char* toPayload(const bool currentState) {
   return currentState ? "on" : "off";
+}
+
+const String getCmdTopic(int relayNUm) {
+  return getTopic(relayNUm) + "/cmd";
+}
+
+const String getStateTopic(int relayNUm) {
+  return getTopic(relayNUm) + "/state";
+}
+
+String getTopic(int relayNUm) {
+  return "/" + DEVICE_NAME + "/" + RELAYS_PATTERN + "-" + relayNUm;
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -200,27 +204,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived in topic: ");
   Serial.println(topic);
 
-  Serial.print("Message:");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
+  for (int relyNum = 0; relyNum < NUM_RELAYS; relyNum++) {
+    if (String(topic) == getCmdTopic(relyNum)) {
+      handleRelay(relyNum, payload, length);
+    }
   }
-
-  if (!strncmp((char *)topic, TOPIC_1, 1000)) {
-    handleRelay(D0, payload, length);
-  }
-  if (!strncmp((char *)topic, TOPIC_2, 1000)) {
-    handleRelay(D1, payload, length);
-  }
-
-  Serial.println();
   Serial.println("-----------------------");
 
 }
 
-void handleRelay(int pin, byte* payload, unsigned int length ) {
+void handleRelay(int relyNum, byte* payload, unsigned int length ) {
   if (!strncmp((char *)payload, "off", length)) {
-    digitalWrite(pin, RELAY_OFF);
+    saveRelyState(relyNum, false);
   } else if (!strncmp((char *)payload, "on", length)) {
-    digitalWrite(pin, RELAY_ON);
+    saveRelyState(relyNum, true);
   }
 }
