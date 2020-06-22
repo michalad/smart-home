@@ -10,7 +10,7 @@ IPAddress gateway(192, 168, 0, 1);
 IPAddress subnet(255, 255, 0, 0);
 
 InternetProps internetProps = { ip , gateway , subnet, mac };
-MqttProps mqttProps  = {"192.168.0.23", 1883, "mqtt", "mqtt", DEVICE_NAME, 0, 1};
+MqttProps mqttProps  = {"192.168.0.20", 1883, "mqtt", "mqtt", DEVICE_NAME, 1, 0};
 
 EthernetClient *ethernetClient;
 PubSubClient *mqttClient;
