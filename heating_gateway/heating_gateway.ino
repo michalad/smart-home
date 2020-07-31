@@ -5,12 +5,12 @@ byte mac[] = {
 };
 String DEVICE_NAME = "mqtt-gateway-1";
 
-IPAddress ip(192, 168, 0, 176);
-IPAddress gateway(192, 168, 0, 1);
+IPAddress ip(192, 168, 100, 171);
+IPAddress gateway(192, 168, 100, 1);
 IPAddress subnet(255, 255, 0, 0);
 
 InternetProps internetProps = { ip , gateway , subnet, mac };
-MqttProps mqttProps  = {"192.168.0.20", 1883, "mqtt", "mqtt", DEVICE_NAME, 1, 0};
+MqttProps mqttProps  = {"192.168.100.151", 1883, "mqtt", "mqtt", DEVICE_NAME, 1, 0};
 
 EthernetClient *ethernetClient;
 PubSubClient *mqttClient;
